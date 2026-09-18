@@ -2,7 +2,7 @@
 
 Automatically copy G-code files from a USB flash drive into Klipper/Moonraker storage when the USB drive is plugged in.
 
-This project follows the v2 guide: USB folders are preserved, changed files are detected with a manifest, uploads use Moonraker's file-upload API so thumbnails are available immediately, KlipperScreen shows progress, and the USB drive is mounted read-only and automatically unmounted. fileciteturn0file0L13-L20
+This project follows the v2 guide: USB folders are preserved, changed files are detected with a manifest, uploads use Moonraker's file-upload API so thumbnails are available immediately, KlipperScreen shows progress, and the USB drive is mounted read-only and automatically unmounted.
 
 ## Reference hardware
 
@@ -26,7 +26,7 @@ If already installed:
 cd ~/Klipper-USB-Copy-gcode && git pull && bash install.sh
 ```
 
-The installer detects the Klipper user by looking for `printer_data/gcodes`, installs required packages, installs the udev/systemd integration, patches the user name, and checks the required Klipper/Moonraker settings. fileciteturn0file0L105-L111
+The installer detects the Klipper user by looking for `printer_data/gcodes`, installs required packages, installs the udev/systemd integration, patches the user name, and checks the required Klipper/Moonraker settings.
 
 After installation, insert a USB flash drive containing G-code files.
 
@@ -53,7 +53,7 @@ usb-gcode-copy.sh
     └─ unmount and report result
 ```
 
-The design intentionally uses Moonraker's upload endpoint instead of a normal `cp`, because the guide specifies that this allows metadata and thumbnails to be generated before clients are notified. fileciteturn0file0L43-L55
+The design intentionally uses Moonraker's upload endpoint instead of a normal `cp`, because the guide specifies that this allows metadata and thumbnails to be generated before clients are notified.
 
 Files are copied into:
 
@@ -61,7 +61,7 @@ Files are copied into:
 ~/printer_data/gcodes/USB/
 ```
 
-USB subdirectories are preserved by default. fileciteturn0file0L13-L14
+USB subdirectories are preserved by default.
 
 ## Features
 
@@ -101,7 +101,7 @@ For a buzzer on GPIO70:
 sudo sed -i 's|^BEEP_GPIO=.*|BEEP_GPIO="70"|' /usr/local/bin/usb-gcode-copy.sh
 ```
 
-The guide notes that configuration changes are read on the next USB insertion; no service reload is required. fileciteturn0file0L180-L192
+The guide notes that configuration changes are read on the next USB insertion; no service reload is required.
 
 ## Testing
 
@@ -127,7 +127,7 @@ ls -la ~/printer_data/gcodes/USB/
 sudo rm -f /var/lib/usb-gcode-copy/manifest
 ```
 
-This clears the transfer history so files are considered again. fileciteturn0file0L203-L207
+This clears the transfer history so files are considered again.
 
 ## Uninstall
 
@@ -136,7 +136,7 @@ cd ~/Klipper-USB-Copy-gcode
 bash uninstall.sh
 ```
 
-Copied files in `~/printer_data/gcodes/USB/` are left untouched. fileciteturn0file0L123-L129
+Copied files in `~/printer_data/gcodes/USB/` are left untouched.
 
 ## Troubleshooting
 
@@ -153,11 +153,11 @@ If Moonraker has `trusted_clients`, add `127.0.0.1`.
 
 ### HTTP 503
 
-Moonraker/Klipper may not be ready yet, especially during boot. Reconnect the USB drive. fileciteturn0file0L225-L231
+Moonraker/Klipper may not be ready yet, especially during boot. Reconnect the USB drive.
 
 ### Popup does not appear
 
-Verify `[respond]` is present in `printer.cfg`. The guide provides a manual prompt test and notes that older KlipperScreen versions may not support the required client prompt behavior. fileciteturn0file0L233-L237
+Verify `[respond]` is present in `printer.cfg`. The guide provides a manual prompt test and notes that older KlipperScreen versions may not support the required client prompt behavior.
 
 ### Thumbnails are missing
 
@@ -167,7 +167,7 @@ Check that the slicer embedded thumbnail data:
 grep -c "thumbnail begin" ~/printer_data/gcodes/USB/YOURFILE.gcode
 ```
 
-Zero means the slicer needs thumbnail export enabled. fileciteturn0file0L247-L253
+Zero means the slicer needs thumbnail export enabled.
 
 ## Installed files
 
@@ -180,7 +180,7 @@ Zero means the slicer needs thumbnail export enabled. fileciteturn0file0�
 | `/var/lib/usb-gcode-copy/manifest` | Transfer history |
 | `/media/usbgcode` | Temporary mount point |
 
-These installed paths match the v2 guide. fileciteturn0file0L284-L294
+These installed paths match the v2 guide.
 
 ## License
 
