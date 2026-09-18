@@ -1,0 +1,9 @@
+[Unit]
+Description=Copy G-code from USB device %I to Klipper
+After=network.target moonraker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/usb-gcode-copy.sh %I
+RemainAfterExit=no
+TimeoutStartSec=1800
