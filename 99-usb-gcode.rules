@@ -1,0 +1,4 @@
+# Trigger the G-code copy service when a USB storage partition appears.
+# SUBSYSTEMS=="usb" guarantees internal microSD/eMMC (mmcblk*) is never touched.
+ACTION=="add", SUBSYSTEM=="block", SUBSYSTEMS=="usb", ENV{ID_FS_USAGE}=="filesystem", \
+    TAG+="systemd", ENV{SYSTEMD_WANTS}="usb-gcode-copy@%k.service"
