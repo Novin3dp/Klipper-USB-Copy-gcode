@@ -1,8 +1,27 @@
-# Novin3dp Klipper USB G-code Copy
+# Klipper USB G-code Auto Copy
 
-Automatically copy G-code files from a USB flash drive into Klipper/Moonraker storage when the USB drive is plugged in.
+Automatic **G-code transfer from USB flash drive to Klipper / Moonraker storage**, with KlipperScreen progress, thumbnail-aware uploads, folder preservation, and detection of new or updated files.
 
-This project follows the v2 guide: USB folders are preserved, changed files are detected with a manifest, uploads use Moonraker's file-upload API so thumbnails are available immediately, KlipperScreen shows progress, and the USB drive is mounted read-only and automatically unmounted.
+This project follows the Novin3dp USB G-code Auto Copy v2 guide: USB folders are preserved, changed files are detected with a manifest, uploads use Moonraker's file-upload API so thumbnails are available immediately, KlipperScreen shows progress, and the USB drive is mounted read-only and automatically unmounted.
+
+## What it does
+
+Insert a USB flash drive containing G-code files and the system automatically:
+
+- Detects the USB storage device.
+- Mounts the USB filesystem **read-only**.
+- Preserves the USB folder structure.
+- Detects new files and re-sliced/updated files.
+- Uploads files through Moonraker `/server/files/upload`.
+- Shows transfer progress through a KlipperScreen prompt.
+- Optionally beeps when the transfer finishes.
+- Cleans up and unmounts the USB drive on exit.
+
+Destination:
+
+```text
+~/printer_data/gcodes/USB/
+```
 
 ## Reference hardware
 
@@ -113,7 +132,9 @@ tail -f /var/log/usb-gcode-copy.log
 
 Check services:
 
-```journalctl -u 'usb-gcode-copy@*' -n 50 --no-pager```
+```bash
+journalctl -u 'usb-gcode-copy@*' -n 50 --no-pager
+```
 
 Check copied files:
 
@@ -181,6 +202,14 @@ Zero means the slicer needs thumbnail export enabled.
 | `/media/usbgcode` | Temporary mount point |
 
 These installed paths match the v2 guide.
+
+## Keywords
+
+Klipper USB G-code copy, Klipper USB copy, automatic G-code transfer, KlipperScreen USB, Moonraker upload, 3D printer USB G-code, BIGTREETECH CB1, BTT Pi, MKS Robin Nano V3, MKS TS35 V2, USB flash drive, G-code auto copy, 3D printing, Klipper automation.
+
+## Credits
+
+The v2 guide notes that three initial design ideas were inspired by [Kanrog/klipper-usb-copy](https://github.com/Kanrog/klipper-usb-copy).
 
 ## License
 
