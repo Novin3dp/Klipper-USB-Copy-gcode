@@ -1,8 +1,8 @@
 # Klipper USB G-code Auto Copy
 
-Automatic **G-code transfer from USB flash drive to Klipper / Moonraker storage**, with KlipperScreen progress, thumbnail-aware uploads, folder preservation, and detection of new or updated files.
+Automatic **G-code transfer from a USB flash drive to Klipper / Moonraker storage**, with KlipperScreen progress, thumbnail-aware uploads, folder preservation, and detection of new or updated files.
 
-This project follows the Novin3dp USB G-code Auto Copy v2 guide: USB folders are preserved, changed files are detected with a manifest, uploads use Moonraker's file-upload API so thumbnails are available immediately, KlipperScreen shows progress, and the USB drive is mounted read-only and automatically unmounted.
+The installer is **offline-first**: the normal installation does not run `apt-get`, download packages, clone repositories, or require an internet connection. Download the project ZIP on another computer, transfer it to the printer, extract it, and run the installer.
 
 ## What it does
 
@@ -17,11 +17,84 @@ Insert a USB flash drive containing G-code files and the system automatically:
 - Optionally beeps when the transfer finishes.
 - Cleans up and unmounts the USB drive on exit.
 
-Destination:
+Destination: `~/printer_data/gcodes/USB/`
 
-```text
-~/printer_data/gcodes/USB/
+## Quick offline installation (recommended)
+
+### 1. Download the ZIP on a computer with internet
+
+Open the [GitHub repository](https://github.com/Novin3dp/Klipper-USB-Copy-gcode), choose **Code → Download ZIP**, and save the ZIP file. Do not extract it yet.
+
+### 2. Transfer the ZIP to the BTT Pi / CB1
+
+From Windows PowerShell, replace the IP address if needed:
+
+```powershell
+scp "$env:USERPROFILE\Downloads\Klipper-USB-Copy-gcode-main.zip" biqu@PRINTER_IP:/home/biqu/
 ```
+
+Accept the SSH fingerprint with `yes` if prompted, then enter the Linux user's password. Password characters are not shown while typing.
+
+### 3. Extract and install on the printer
+
+Connect by SSH, then run:
+
+```bash
+cd ~
+unzip -o Klipper-USB-Copy-gcode-main.zip
+rm -rf ~/Klipper-USB-Copy-gcode
+mv ~/Klipper-USB-Copy-gcode-main ~/Klipper-USB-Copy-gcode
+cd ~/Klipper-USB-Copy-gcode
+bash install.sh
+```
+
+The installer automatically detects the Klipper Linux user (for example, `biqu`), copies the service and udev files, patches the username, creates required directories, and reloads systemd/udev.
+
+**Important:** `bash install.sh` is offline by default. It does not run `apt-get update` or install packages.
+
+### 4. Check Klipper settings
+
+The installer checks for these sections in `~/printer_data/config/printer.cfg`:
+
+```ini
+[display_status]
+
+[respond]
+```
+
+If it reports either section missing, add only the missing section(s), save the file, and click **FIRMWARE RESTART** in Mainsail.
+
+If Moonraker has a `trusted_clients` list, it must allow localhost. The following is valid:
+
+```ini
+trusted_clients:
+    127.0.0.0/8
+```
+
+### 5. Test
+
+Unplug and reconnect the USB flash drive. Watch the log:
+
+```bash
+tail -f /var/log/usb-gcode-copy.log
+```
+
+Copied files appear in:
+
+```bash
+ls -la ~/printer_data/gcodes/USB/
+```
+
+## Installation modes
+
+| Command | Behavior |
+|---|---|
+| `bash install.sh` | Offline installation; no package manager or network access |
+| `bash install.sh --offline` | Same as the default |
+| `bash install.sh --online-deps` | Uses apt to install curl, ntfs-3g, and exfatprogs, then installs the project |
+| `bash install.sh --help` | Shows installer help |
+
+Only `curl` is a required external runtime package. The installer checks for it and stops with an actionable message if it is missing. `exfatprogs` is not required merely to mount an exFAT drive; actual exFAT/NTFS mounting depends on kernel or filesystem-helper support. FAT32 is the safest choice when preparing a USB drive for a system with unknown filesystem support. The emoji font is optional.
 
 ## Reference hardware
 
@@ -31,29 +104,12 @@ Designed and tested for:
 - MKS Robin Nano V3
 - MKS TS35 V2 + KlipperScreen
 
-## One-command installation
-
-On the CB1/BTT Pi:
-
-```bash
-cd ~ && git clone https://github.com/Novin3dp/Klipper-USB-Copy-gcode.git && cd Klipper-USB-Copy-gcode && bash install.sh
-```
-
-If already installed:
-
-```bash
-cd ~/Klipper-USB-Copy-gcode && git pull && bash install.sh
-```
-
-The installer detects the Klipper user by looking for `printer_data/gcodes`, installs required packages, installs the udev/systemd integration, patches the user name, and checks the required Klipper/Moonraker settings.
-
-After installation, insert a USB flash drive containing G-code files.
-
 ## Requirements
 
 - Klipper + Moonraker + KlipperScreen
+- `curl`
 - `[display_status]` and `[respond]` in `printer.cfg`
-- If Moonraker uses `trusted_clients`, `127.0.0.1` must be trusted
+- If Moonraker uses `trusted_clients`, localhost (`127.0.0.1` or `127.0.0.0/8`) must be trusted
 
 ## How it works
 
@@ -72,38 +128,11 @@ usb-gcode-copy.sh
     └─ unmount and report result
 ```
 
-The design intentionally uses Moonraker's upload endpoint instead of a normal `cp`, because the guide specifies that this allows metadata and thumbnails to be generated before clients are notified.
-
-Files are copied into:
-
-```
-~/printer_data/gcodes/USB/
-```
-
-USB subdirectories are preserved by default.
-
-## Features
-
-- Automatic USB detection
-- Read-only mounting
-- USB-only udev matching; internal mmcblk storage is not targeted
-- Preserves USB folder structure
-- Detects new and re-sliced/updated files
-- Skips unchanged files
-- Moonraker API upload for immediate metadata/thumbnail processing
-- Live KlipperScreen progress popup
-- Popups suppressed while printing
-- Optional completion beep
-- Guaranteed cleanup/unmount with `trap`
-- Supports `gcode gco gc g ufp bgcode`
+The design uses Moonraker's upload endpoint instead of a normal `cp`, so metadata and thumbnails can be processed before clients are notified.
 
 ## Configuration
 
-Edit the configuration block at the top of:
-
-```
-/usr/local/bin/usb-gcode-copy.sh
-```
+Edit the configuration block at the top of `/usr/local/bin/usb-gcode-copy.sh`.
 
 | Variable | Default | Description |
 |---|---:|---|
@@ -120,9 +149,9 @@ For a buzzer on GPIO70:
 sudo sed -i 's|^BEEP_GPIO=.*|BEEP_GPIO="70"|' /usr/local/bin/usb-gcode-copy.sh
 ```
 
-The guide notes that configuration changes are read on the next USB insertion; no service reload is required.
+Configuration changes are read on the next USB insertion; no service reload is required.
 
-## Testing
+## Testing and maintenance
 
 Watch the log:
 
@@ -130,27 +159,19 @@ Watch the log:
 tail -f /var/log/usb-gcode-copy.log
 ```
 
-Check services:
+Check service logs:
 
 ```bash
 journalctl -u 'usb-gcode-copy@*' -n 50 --no-pager
 ```
 
-Check copied files:
-
-```
-ls -la ~/printer_data/gcodes/USB/
-```
-
-## Force a full re-copy
+Force a full re-copy:
 
 ```bash
 sudo rm -f /var/lib/usb-gcode-copy/manifest
 ```
 
-This clears the transfer history so files are considered again.
-
-## Uninstall
+Uninstall:
 
 ```bash
 cd ~/Klipper-USB-Copy-gcode
@@ -165,12 +186,12 @@ Copied files in `~/printer_data/gcodes/USB/` are left untouched.
 
 ```bash
 lsblk
-udevadm test /sys/class/block/sda1 2>&1 | grep -i systemd
+journalctl -u 'usb-gcode-copy@*' -n 50 --no-pager
 ```
 
 ### HTTP 401 / 403
 
-If Moonraker has `trusted_clients`, add `127.0.0.1`.
+If Moonraker has `trusted_clients`, allow localhost, for example `127.0.0.0/8`.
 
 ### HTTP 503
 
@@ -178,7 +199,7 @@ Moonraker/Klipper may not be ready yet, especially during boot. Reconnect the US
 
 ### Popup does not appear
 
-Verify `[respond]` is present in `printer.cfg`. The guide provides a manual prompt test and notes that older KlipperScreen versions may not support the required client prompt behavior.
+Verify `[respond]` is present in `printer.cfg`, then run **FIRMWARE RESTART**. Older KlipperScreen versions may not support the required client prompt behavior.
 
 ### Thumbnails are missing
 
@@ -201,15 +222,9 @@ Zero means the slicer needs thumbnail export enabled.
 | `/var/lib/usb-gcode-copy/manifest` | Transfer history |
 | `/media/usbgcode` | Temporary mount point |
 
-These installed paths match the v2 guide.
-
-## Keywords
-
-Klipper USB G-code copy, Klipper USB copy, automatic G-code transfer, KlipperScreen USB, Moonraker upload, 3D printer USB G-code, BIGTREETECH CB1, BTT Pi, MKS Robin Nano V3, MKS TS35 V2, USB flash drive, G-code auto copy, 3D printing, Klipper automation.
-
 ## Credits
 
-The v2 guide notes that three initial design ideas were inspired by [Kanrog/klipper-usb-copy](https://github.com/Kanrog/klipper-usb-copy).
+The initial design includes ideas inspired by [Kanrog/klipper-usb-copy](https://github.com/Kanrog/klipper-usb-copy).
 
 ## License
 
