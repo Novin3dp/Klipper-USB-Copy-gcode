@@ -10,7 +10,7 @@ usage() {
 Usage:
   bash install.sh                 Install offline (default; no apt/network access)
   bash install.sh --offline       Same as above
-  bash install.sh --online-deps   Install missing packages using apt, then install
+  bash install.sh --online-deps   Install packages using apt, then install
   bash install.sh --help          Show this help
 
 The normal installer never runs apt-get and never contacts the internet.
@@ -41,6 +41,9 @@ if [ "$MODE" = "--offline" ]; then
     echo "Mode: OFFLINE (no package manager or network will be used)"
 else
     echo "Mode: ONLINE (apt may access configured repositories)"
+    echo "Installing curl and optional filesystem helpers..."
+    "${SUDO[@]}" apt-get update
+    "${SUDO[@]}" apt-get install -y curl ntfs-3g exfatprogs
 fi
 
 # Find the Linux account that owns Klipper's gcodes directory.
@@ -69,27 +72,20 @@ if [ ! -d "/home/$KLIPPER_USER/printer_data/gcodes" ]; then
 fi
 echo "Klipper user: $KLIPPER_USER"
 
-# curl is required by the runtime script. Filesystem helpers and emoji fonts
-# are optional; the kernel may already support exFAT/NTFS.
+# curl is required at runtime. Filesystem helpers and emoji fonts are optional.
 if ! command -v curl >/dev/null 2>&1; then
-    if [ "$MODE" = "--online-deps" ]; then
-        "${SUDO[@]}" apt-get update
-        "${SUDO[@]}" apt-get install -y curl
+    echo
+    echo "ERROR: curl is not installed; the copy service cannot upload files without it."
+    if [ "$MODE" = "--offline" ]; then
+        echo "Install curl from local/offline package media, or later run:"
+        echo "  bash install.sh --online-deps"
     else
-        echo
-        echo "ERROR: curl is not installed; the copy service cannot upload files without it."
-        echo "Offline options:"
-        echo "  1. Install curl from a local package cache / offline package media."
-        echo "  2. If internet is available later, run: bash install.sh --online-deps"
-        exit 1
+        echo "apt was unable to provide curl; check the package manager output."
     fi
+    exit 1
 fi
 
-if [ "$MODE" = "--online-deps" ]; then
-    echo "Installing filesystem helper packages..."
-    "${SUDO[@]}" apt-get update
-    "${SUDO[@]}" apt-get install -y curl ntfs-3g exfatprogs
-else
+if [ "$MODE" = "--offline" ]; then
     echo "Skipping apt-get and all package downloads."
 fi
 
