@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # usb-gcode-copy.sh
 # Automatically copies G-code from a USB drive to Klipper/Moonraker.
 set -u
@@ -9,6 +9,7 @@ MOONRAKER="http://127.0.0.1:7125"
 MNT="/media/usbgcode"
 LOG="/var/log/usb-gcode-copy.log"
 STATE_DIR="/var/lib/usb-gcode-copy"
+HTTP_HELPER="/usr/local/lib/usb-gcode-copy-http.py"
 BAR_W=14
 KEEP_STRUCTURE=1
 SETTLE=3
@@ -27,10 +28,11 @@ exec >>"$LOG" 2>&1
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 
 rpc() {
-    local out code
-    out=$(curl -s -w '\n%{http_code}' -m 5 -G         --data-urlencode "script=$1"         -X POST "$MOONRAKER/printer/gcode/script")
-    code=$(echo "$out" | tail -1)
-    [ "$code" = "200" ] || log "gcode failed ($code): $(echo "$out" | head -1)"
+    local out
+    out=$(python3 "$HTTP_HELPER" gcode "$MOONRAKER" "$1" 2>&1) || {
+        log "gcode request failed: $out"
+        return 1
+    }
 }
 
 bar() {
@@ -81,11 +83,12 @@ cleanup() {
 trap cleanup EXIT
 
 log "USB copy triggered for $DEV"
-command -v curl >/dev/null || { log "FATAL: curl not installed"; exit 1; }
+[ -x "$HTTP_HELPER" ] || { log "FATAL: HTTP helper not installed: $HTTP_HELPER"; exit 1; }
+command -v python3 >/dev/null || { log "FATAL: python3 not installed"; exit 1; }
 sleep "$SETTLE"
 
 SHOW=1
-STATE=$(curl -s -m 5 "$MOONRAKER/printer/objects/query?print_stats"     | grep -o '"state": *"[a-z]*"' | head -1 | cut -d'"' -f4)
+STATE=$(python3 "$HTTP_HELPER" state "$MOONRAKER" 2>/dev/null || echo unknown)
 log "Printer state: ${STATE:-unknown}"
 if [ "$STATE" = "printing" ]; then
     SHOW=0
@@ -104,6 +107,7 @@ elif mount -o ro "$DEV" "$MNT" 2>/dev/null; then
     log "Mounted $DEV at $MNT (without uid/gid options)"
 else
     log "ERROR: failed to mount $DEV"
+    log "Check the USB filesystem driver (FAT32/exFAT/NTFS) and dmesg."
     exit 1
 fi
 
@@ -142,7 +146,7 @@ while IFS= read -r -d '' f; do
     rec=$(manifest_get "$rel")
     dst="$GCODE_DIR/$rel"
 
-    if [ -f "$dst" ] && [ "$rec" = "$size	$mtime" ]; then
+    if [ -f "$dst" ] && [ "$rec" = "$size\t$mtime" ]; then
         UNCHANGED=$((UNCHANGED+1))
         log "unchanged: $rel"
         continue
@@ -188,7 +192,7 @@ for idx in "${!SRC[@]}"; do
     progress "💾 $(bar $(((i-1)*100/N)))  $i/$N"
     log "uploading: $rel"
 
-    code=$(curl -s -o /tmp/usbup.out -w '%{http_code}' -m 900         -F "root=gcodes"         -F "path=$upath"         -F "file=@$f;filename=$base"         "$MOONRAKER/server/files/upload")
+    code=$(python3 "$HTTP_HELPER" upload "$MOONRAKER" "$upath" "$f" /tmp/usbup.out 2>/dev/null) || true
 
     if [ "$code" = "201" ] || [ "$code" = "200" ]; then
         OK=$((OK+1))
@@ -196,7 +200,7 @@ for idx in "${!SRC[@]}"; do
         log "  ok"
     else
         FAILED="$FAILED $base"
-        log "  FAILED (http $code): $(head -c 300 /tmp/usbup.out 2>/dev/null)"
+        log "  FAILED (http ${code:-000}): $(head -c 300 /tmp/usbup.out 2>/dev/null)"
     fi
 done
 
