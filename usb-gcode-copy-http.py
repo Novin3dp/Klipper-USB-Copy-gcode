@@ -89,7 +89,7 @@ def upload_file(base_url, moonraker_path, filename, response_path):
         prefix.extend(("--" + boundary + "\r\n").encode("ascii"))
         disposition = (
             'Content-Disposition: form-data; name="file"; filename="' + safe_ascii +
-            '"; filename*=UTF-8\'\'' + encoded_name + "\r\n"
+            '"; filename*=UTF-8' + "''" + encoded_name + "\r\n"
         )
         prefix.extend(disposition.encode("ascii"))
         prefix.extend(b"Content-Type: application/octet-stream\r\n\r\n")
