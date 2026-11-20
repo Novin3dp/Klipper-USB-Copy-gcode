@@ -22,7 +22,13 @@ for cmd in sudo python3 systemctl udevadm; do
     fi
 done
 
-sudo -v
+echo "→ Administrator permission is required for system files."
+echo "  Enter the Linux password for user '$USER' (password typing is hidden)."
+if ! sudo -v; then
+    echo "ERROR: sudo authentication failed. Check the Linux account password and sudo permissions."
+    exit 1
+fi
+echo "  ✓ Administrator permission confirmed."
 
 # Detect the Klipper Linux user by finding printer_data/gcodes.
 KLIPPER_USER=""
